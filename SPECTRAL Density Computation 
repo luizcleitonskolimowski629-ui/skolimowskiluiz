@@ -1,0 +1,29 @@
+from f11 import SpectralDensity
+import numpy as np
+density = SpectralDensity()
+# Compute _F11(T) for T in [10, 1000]
+T_values = np.linspace(10, 1000, 1000)
+rho_values = density.rho_F11(T_values)
+# Classical Weyl density for comparison
+rho_weyl = density.rho_weyl(T_values)
+# Compute relative difference
+diff = np.abs(rho_values - rho_weyl) / rho_weyl
+print(f"Max relative difference: {np.max(diff):.6e}")
+E.3.3. Trace Formula Evaluation.
+from f11 import TraceFormulaComputer
+import numpy as np
+tfc = TraceFormulaComputer()
+# Define test function (Gaussian)
+def h(T):
+return np.exp(-(T - 100)**2 / 400)
+def h_prime(T):
+return -(T - 100) / 200 * h(T)
+# Evaluate LHS (discrete sum)
+zeros = tfc.get_zeros(N=50) # Use precomputed or F11
+LHS = np.sum(h(zeros))
+# Evaluate RHS (integral)
+RHS, error_est = tfc.trace_formula_integral(h, T_min=50, T_max=150)
+print(f"LHS (sum over zeros): {LHS:.10f}")
+print(f"RHS (integral): {RHS:.10f}")
+print(f"Absolute difference: {abs(LHS - RHS):.10e}")
+print(f"Predicted error: {error_est:.10e}")
