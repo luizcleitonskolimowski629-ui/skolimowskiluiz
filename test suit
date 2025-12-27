@@ -1,0 +1,9 @@
+pytest tests/ -v --cov=f11
+# Expected output:
+# tests/test_accuracy.py::test_first_100_zeros PASSED
+# tests/test_accuracy.py::test_large_index PASSED
+# tests/test_trace.py::test_gaussian PASSED
+# tests/test_trace.py::test_convergence PASSED
+# tests/test_performance.py::test_timing PASSED
+#
+# Coverage: 94%
