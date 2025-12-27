@@ -1,0 +1,228 @@
+
+import numpy as np
+import matplotlib.pyplot as plt
+import mpmath as mp
+from mpmath import mpf, pi, e, log, sqrt, sin, zeta, zetazero
+import time
+
+# Configuração de precisão
+mp.dps = 50
+
+print("✅ Imports concluídos")
+print(f"📊 Precisão configurada: {mp.dps} dígitos")
+
+# Função de progresso simples
+def simple_progress(iterable, desc="Progress"):
+    items = list(iterable)
+    total = len(items)
+    for i, item in enumerate(items, 1):
+        if i % max(1, total // 20) == 0 or i == total:
+            print(f"  {desc}: {i}/{total} ({100*i//total}%)")
+        yield item
+
+def primes_upto(N):
+    """Gera todos os primos até N usando Crivo de Eratóstenes"""
+    if N < 2:
+        return []
+    
+    sieve = np.ones(N+1, dtype=bool)
+    sieve[0] = sieve[1] = False
+    
+    for i in range(2, int(np.sqrt(N)) + 1):
+        if sieve[i]:
+            sieve[i*i:N+1:i] = False
+    
+    return np.where(sieve)[0].tolist()
+
+print("\n🔍 Testando gerador de primos...")
+start = time.time()
+primes_test = primes_upto(100000)
+elapsed = time.time() - start
+print(f"✅ Gerados {len(primes_test)} primos em {elapsed:.3f}s")
+
+
+def gram_point_approx(n):
+    """Aproximação do n-ésimo ponto de Gram"""
+    arg = mpf(n) / e
+    w = mp.lambertw(arg)
+    return 2 * pi * mp.exp(w)
+
+def T_base_gram(n):
+    """T_base usando Gram points"""
+    g_n = gram_point_approx(n)
+    correction = pi / (2 * log(g_n))
+    return g_n + correction
+
+print("\n📐 Testando T_base:")
+for n in range(1, 6):
+    T_b = T_base_gram(n)
+    T_real = zetazero(n).imag
+    error = abs(T_b - T_real)
+    print(f"  n={n}: erro={float(error):.2e}")
+
+def T_osc_term(T, primes, max_primes=None):
+    """Calcula T_osc = Σ sin(T log p) / √p"""
+    if max_primes:
+        primes = primes[:max_primes]
+    
+    T = mpf(T)
+    result = mpf(0)
+    
+    for p in primes:
+        p_mpf = mpf(p)
+        term = sin(T * log(p_mpf)) / sqrt(p_mpf)
+        result += term
+    
+    return result
+
+
+
+def F11_solve(n, primes, max_iter=50, tol=1e-12, max_primes=5000):
+    """Resolve T_n = T_base(n) + T_osc(T_n)"""
+    T = T_base_gram(n)
+    
+    for iteration in range(max_iter):
+        osc = T_osc_term(T, primes, max_primes)
+        T_new = T_base_gram(n) + osc
+        
+        delta = abs(T_new - T)
+        
+        if delta < tol:
+            return T_new, iteration+1, True
+        
+        T = T_new
+    
+    return T, max_iter, False
+
+
+
+def test_F11_batch(n_max=100, max_primes=10000):
+    """Testa F11 para zeros de 1 até n_max"""
+    print(f"\n{'='*70}")
+    print(f"TESTE EM BATCH: n=1 até n={n_max}")
+    print(f"{'='*70}\n")
+    
+    print("🔢 Gerando primos...")
+    primes = primes_upto(max_primes * 10)
+    print(f"   Gerados {len(primes)} primos")
+    
+    results = []
+    
+    print("\n🔄 Calculando zeros...")
+    for n in simple_progress(range(1, n_max+1), desc="Progresso"):
+        T_f11, iters, converged = F11_solve(n, primes, max_primes=max_primes)
+        T_real = zetazero(n).imag
+        
+        error_abs = abs(T_f11 - T_real)
+        error_rel = error_abs / T_real
+        
+        results.append({
+            'n': n,
+            'T_f11': float(T_f11),
+            'T_real': float(T_real),
+            'error_abs': float(error_abs),
+            'error_rel': float(error_rel),
+            'iterations': iters,
+            'converged': converged
+        })
+    
+    return results
+
+
+print("\n" + "="*70)
+print("ANÁLISE DE RESULTADOS")
+print("="*70)
+
+errors_abs = np.array([r['error_abs'] for r in results])
+errors_rel = np.array([r['error_rel'] for r in results])
+ns = np.array([r['n'] for r in results])
+
+print(f"\n📊 Estatísticas de Erro:")
+print(f"   Erro absoluto médio:  {np.mean(errors_abs):.2e}")
+print(f"   Erro absoluto máximo: {np.max(errors_abs):.2e}")
+print(f"   Erro relativo médio:  {np.mean(errors_rel):.2e}")
+print(f"   Erro relativo máximo: {np.max(errors_rel):.2e}")
+
+n_converged = sum(1 for r in results if r['converged'])
+print(f"\n✅ Convergência: {n_converged}/{len(results)} zeros")
+
+print(f"\n⚠️ Top 5 piores erros:")
+sorted_results = sorted(results, key=lambda x: x['error_abs'], reverse=True)
+for i, r in enumerate(sorted_results[:5], 1):
+    print(f"   {i}. n={r['n']:3d}: erro={r['error_abs']:.2e}")
+
+
+fig, axes = plt.subplots(2, 2, figsize=(14, 10))
+
+# Erro absoluto
+axes[0, 0].semilogy(ns, errors_abs, 'b.-', markersize=3, linewidth=0.5)
+axes[0, 0].set_xlabel('n (índice do zero)')
+axes[0, 0].set_ylabel('Erro absoluto')
+axes[0, 0].set_title('Erro Absoluto de F11')
+axes[0, 0].grid(True, alpha=0.3)
+
+# Erro relativo
+axes[0, 1].semilogy(ns, errors_rel, 'r.-', markersize=3, linewidth=0.5)
+axes[0, 1].set_xlabel('n (índice do zero)')
+axes[0, 1].set_ylabel('Erro relativo')
+axes[0, 1].set_title('Erro Relativo de F11')
+axes[0, 1].grid(True, alpha=0.3)
+
+# Distribuição de erros
+axes[1, 0].hist(np.log10(errors_abs + 1e-20), bins=30, edgecolor='black', alpha=0.7)
+axes[1, 0].set_xlabel('log₁₀(Erro absoluto)')
+axes[1, 0].set_ylabel('Frequência')
+axes[1, 0].set_title('Distribuição de Erros')
+axes[1, 0].grid(True, alpha=0.3)
+
+# F11 vs Real
+T_reals = [r['T_real'] for r in results]
+T_f11s = [r['T_f11'] for r in results]
+axes[1, 1].plot(T_reals, T_f11s, 'g.', markersize=4)
+axes[1, 1].plot([min(T_reals), max(T_reals)], [min(T_reals), max(T_reals)], 
+                'k--', label='Perfeito (y=x)')
+axes[1, 1].set_xlabel('T_real')
+axes[1, 1].set_ylabel('T_F11')
+axes[1, 1].set_title('F11 vs Zeros Reais')
+axes[1, 1].legend()
+axes[1, 1].grid(True, alpha=0.3)
+
+plt.tight_layout()
+plt.savefig('f11_validation.png', dpi=150)
+print("\n✅ Gráficos salvos em 'f11_validation.png'")
+plt.show()
+
+# =============================================================================
+# CÉLULA 9: Conclusões
+# =============================================================================
+
+print("\n" + "="*70)
+print("CONCLUSÕES")
+print("="*70)
+
+if np.mean(errors_rel) < 1e-6:
+    print(f"\n✅ RESULTADO: F11 é EXATO")
+    print(f"   Implicação: Base sólida para teoria")
+elif np.mean(errors_rel) < 1e-3:
+    print(f"\n🟡 RESULTADO: F11 é APROXIMAÇÃO ÚTIL")
+    print(f"   Implicação: Ferramenta numérica válida")
+else:
+    print(f"\n⚠️ RESULTADO: F11 TEM LIMITAÇÕES")
+    print(f"   Implicação: Requer reformulação")
+
+if len(results) >= 10:
+    error_first = np.mean(errors_rel[:10])
+    error_last = np.mean(errors_rel[-10:])
+    
+    print(f"\n📊 Análise de escala:")
+    print(f"   Erro inicial (n=1-10): {error_first:.2e}")
+    print(f"   Erro final (últimos 10): {error_last:.2e}")
+    
+    if error_last < error_first:
+        print(f"   ✅ Convergência assintótica detectada")
+    else:
+        print(f"   ⚠️ Sem convergência clara")
+
+print("\n" + "="*70)
+print("FIM DA ANÁLISE - COMPARTILHE OS RESULTADOS!")
+print("="*70)
