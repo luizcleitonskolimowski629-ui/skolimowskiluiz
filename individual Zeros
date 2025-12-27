@@ -1,0 +1,10 @@
+from f11 import F11Computer
+# Initialize with 2000 primes for oscillatory term
+computer = F11Computer(n_primes=2000, precision=100)
+# Compute 100th zero
+T_100 = computer.F11(100)
+print(f"T_100 {T_100:.10f}")
+# Output: T_100 236.5240963370
+# Compute batch of zeros
+zeros = computer.F11_batch(range(1, 101))
+print(f"First 100 zeros computed in {computer.last_time:.3f}s")
