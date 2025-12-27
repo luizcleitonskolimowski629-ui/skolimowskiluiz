@@ -1,0 +1,99 @@
+import math
+import time
+
+def f11_twins_predictor(n):
+    """
+    Usa a lógica de inversão da Conjectura de Hardy-Littlewood
+    para prever a localização do n-ésimo par de primos gêmeos.
+    
+    Fórmula Base: Pn ~ n * (ln n)^2 / (2 * C2)
+    Refinamento: Iteração de Ponto Fixo (similar à Lambert W)
+    """
+    # Constante dos Primos Gêmeos (C2)
+    C2 = 0.6601618158468695739278121100145
+    
+    if n < 2: return 3 # O 1º par é (3, 5)
+    
+    # 1. Chute Inicial (Assintótica Pura)
+    # Pn é aproximadamente n * (ln n)^2
+    guess = n * (math.log(n)**2)
+    
+    # 2. Refinamento (Inversão Analítica)
+    # A fórmula exata invertida é transcendente, resolvemos por convergência rápida
+    # Isso é equivalente a aplicar a Lambert W numericamente
+    for _ in range(5):
+        # x = n * (ln x)^2 / (2 * C2)
+        log_g = math.log(guess)
+        guess = (n * (log_g**2)) / (2 * C2)
+        
+    return guess
+
+def gerar_dados_reais(limit_n):
+    """
+    Encontra os verdadeiros pares para comparação (Força Bruta).
+    Nota: Lento para n muito grande.
+    """
+    count = 0
+    num = 3
+    last_prime = 2
+    
+    # Crivo simples para encontrar pares
+    while count < limit_n:
+        # Checa se num é primo
+        is_prime = True
+        if num > 1:
+            for i in range(2, int(num**0.5) + 1):
+                if num % i == 0:
+                    is_prime = False
+                    break
+        
+        if is_prime:
+            if num == last_prime + 2:
+                count += 1
+                yield count, last_prime
+            last_prime = num
+        num += 2
+
+def executar_teste_gemeos():
+    print("🧬 F11-GÊMEOS: Teste de Universalidade da Fórmula")
+    print("=" * 60)
+    print(f"{'Índice (n)':<10} | {'Real (Pn)':<12} | {'F11 Estimado':<12} | {'Precisão':<8}")
+    print("-" * 60)
+    
+    # Alvos para teste (pequena escala para verificação rápida)
+    alvos = [1, 10, 100, 1000, 5000, 10000]
+    gerador = gerar_dados_reais(max(alvos))
+    
+    proximo_alvo_idx = 0
+    
+    start = time.time()
+    
+    for n_real, p_real in gerador:
+        if n_real == alvos[proximo_alvo_idx]:
+            # Calcula a estimativa usando a fórmula
+            p_estimado = f11_twins_predictor(n_real)
+            
+            # Calcula erro
+            erro = abs(p_real - p_estimado)
+            precisao = 100 * (1 - erro/p_real)
+            
+            print(f"{n_real:<10} | {p_real:<12} | {p_estimado:<12.1f} | {precisao:.2f}%")
+            
+            proximo_alvo_idx += 1
+            if proximo_alvo_idx >= len(alvos):
+                break
+                
+    # Teste de Escala Gigante (Apenas Estimativa)
+    print("-" * 60)
+    print("🚀 TESTE DE HIPER-ESCALA (Onde a força bruta falha)")
+    n_huge = 10**9 # 1 Bilhão
+    p_huge = f11_twins_predictor(n_huge)
+    print(f"n = {n_huge:,} (1 Bilhão)")
+    print(f"Estimativa F11: O par está próximo de {p_huge:,.0f}")
+    
+    print("=" * 60)
+    print(f"Tempo de execução: {time.time() - start:.4f}s")
+
+if __name__ == "__main__":
+    executar_teste_gemeos()
+
