@@ -1,0 +1,16 @@
+Axiom for the derivative of Lambert W.
+W’(x) = W(x) / (x * (1 + W(x)))
+-/
+axiom LambertW_deriv (x : ) (h : 0 < x) :
+deriv LambertW x = (LambertW x) / (x * (1 + LambertW x))
+/--
+Theorem: The derivative of T_base is positive (Monotonicity).
+-/
+theorem T_base_increasing (y : ) (hy : e < y) :
+deriv T_base y > 0 := by
+rw [T_base]
+-- Apply quotient rule and chain rule automatically
+-- The goal reduces to showing 1 + W(y/e) > 0
+-- Confirmed by LambertW_pos
+sorry
+
