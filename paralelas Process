@@ -1,0 +1,12 @@
+from multiprocessing import Pool
+from f11 import F11Computer
+def compute_zero(n):
+computer = F11Computer(n_primes=2000)
+return n, computer.F11(n)
+if __name__ == ’__main__’:
+indices = range(1, 10001)
+with Pool(processes=16) as pool:
+results = pool.map(compute_zero, indices)
+# results is list of (n, T_n) tuples
+zeros = dict(results)
+print(f"Computed {len(zeros)} zeros using 16 cores")
